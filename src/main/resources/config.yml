@@ -86,6 +86,27 @@ visualization:
   particle-spacing: 0.5
   update-interval: 20  # Ticks between updates for always-on mode
 
+# 𝖬𝖠𝖯 𝖨𝖭𝖳𝖤𝖦𝖱𝖠𝖳𝖨𝖮𝖭
+# BlueMap integration - show claims on BlueMap web map
+bluemap:
+  enabled: true
+  fill-color: "3366FF"
+  fill-opacity: 0.3
+  border-color: "3366FF"
+  border-opacity: 0.8
+
+# Dynmap integration - show claims on Dynmap web map
+dynmap:
+  enabled: true
+  fill-color: "3366FF"
+  fill-opacity: 0.3
+  border-color: "3366FF"
+  border-opacity: 0.8
+
+# 𝖧𝖮𝖬𝖤𝖲 𝖲𝖤𝖳𝖳𝖨𝖭𝖦𝖲
+# Maximum number of homes a player can set (overridable with landclaim.homes.limit.<n>)
+max-homes: 3
+
 # Message prefix (used for all messages)
 # Messages are now stored in messages.yml file
 prefix: "&8[&#31A2DDLandClaim&8] &7"

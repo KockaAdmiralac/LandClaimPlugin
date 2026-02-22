@@ -6,6 +6,7 @@ import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.managers.ConfigManager;
+import org.ayosynk.landClaimPlugin.managers.HomeManager;
 import org.ayosynk.landClaimPlugin.managers.TrustManager;
 import org.ayosynk.landClaimPlugin.managers.VisualizationManager;
 import org.ayosynk.landClaimPlugin.managers.VisualizationManager.VisualizationMode;
@@ -30,18 +31,20 @@ public class CommandHandler implements CommandExecutor {
     private final TrustManager trustManager;
     private final ConfigManager configManager;
     private final VisualizationManager visualizationManager;
+    private final HomeManager homeManager;
     private final Map<UUID, Boolean> autoClaimPlayers = new HashMap<>();
     private final Map<UUID, Boolean> autoUnclaimPlayers = new HashMap<>();
     private final Map<UUID, Long> unstuckCooldowns = new HashMap<>();
 
     public CommandHandler(LandClaimPlugin plugin, ClaimManager claimManager,
-                          TrustManager trustManager, ConfigManager configManager,
-                          VisualizationManager visualizationManager) {
+            TrustManager trustManager, ConfigManager configManager,
+            VisualizationManager visualizationManager, HomeManager homeManager) {
         this.plugin = plugin;
         this.claimManager = claimManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.visualizationManager = visualizationManager;
+        this.homeManager = homeManager;
 
         // Load persisted player data
         loadPlayerData();
@@ -128,6 +131,21 @@ public class CommandHandler implements CommandExecutor {
                     break;
                 case "member":
                     handleMemberCommand(player, args);
+                    break;
+                case "list":
+                    handleListCommand(player);
+                    break;
+                case "sethome":
+                    handleSetHomeCommand(player, args);
+                    break;
+                case "delhome":
+                    handleDelHomeCommand(player, args);
+                    break;
+                case "home":
+                    handleHomeCommand(player, args);
+                    break;
+                case "homes":
+                    handleHomesCommand(player);
                     break;
                 default:
                     sendMessage(player, "invalid-command");
@@ -225,7 +243,8 @@ public class CommandHandler implements CommandExecutor {
         for (int radius = 1; radius <= 50; radius++) {
             for (int x = -radius; x <= radius; x++) {
                 for (int z = -radius; z <= radius; z++) {
-                    if (Math.abs(x) != radius && Math.abs(z) != radius) continue;
+                    if (Math.abs(x) != radius && Math.abs(z) != radius)
+                        continue;
 
                     int chunkX = startX + x;
                     int chunkZ = startZ + z;
@@ -303,7 +322,8 @@ public class CommandHandler implements CommandExecutor {
 
         UUID ownerId = claimManager.getChunkOwner(pos);
         String ownerName = Bukkit.getOfflinePlayer(ownerId).getName();
-        if (ownerName == null) ownerName = "Unknown";
+        if (ownerName == null)
+            ownerName = "Unknown";
 
         if (claimManager.unclaimChunk(chunk)) {
             sendMessage(admin, "admin-unclaimed", "{owner}", ownerName);
@@ -344,8 +364,7 @@ public class CommandHandler implements CommandExecutor {
                 // Create clickable trust entry
                 player.spigot().sendMessage(ChatMessageType.CHAT,
                         TextComponent.fromLegacyText(configManager.getMessage(
-                                "trust-list-item", "{player}", name
-                        )));
+                                "trust-list-item", "{player}", name)));
             }
         }
         sendMessage(player, "click-to-manage");
@@ -368,7 +387,8 @@ public class CommandHandler implements CommandExecutor {
 
         UUID ownerId = claimManager.getChunkOwner(pos);
         String ownerName = Bukkit.getOfflinePlayer(ownerId).getName();
-        if (ownerName == null) ownerName = "Unknown";
+        if (ownerName == null)
+            ownerName = "Unknown";
 
         sendMessage(player, "claim-info-owner", "{owner}", ownerName);
 
@@ -377,7 +397,8 @@ public class CommandHandler implements CommandExecutor {
             List<String> names = new ArrayList<>();
             for (UUID id : trusted) {
                 String name = Bukkit.getOfflinePlayer(id).getName();
-                if (name != null) names.add(name);
+                if (name != null)
+                    names.add(name);
             }
             player.sendMessage(configManager.getMessage("claim-info-trusted", "{players}", String.join(", ", names)));
         }
@@ -387,9 +408,11 @@ public class CommandHandler implements CommandExecutor {
             List<String> memberNames = new ArrayList<>();
             for (UUID id : members) {
                 String name = Bukkit.getOfflinePlayer(id).getName();
-                if (name != null) memberNames.add(name);
+                if (name != null)
+                    memberNames.add(name);
             }
-            player.sendMessage(configManager.getMessage("claim-info-members", "{members}", String.join(", ", memberNames)));
+            player.sendMessage(
+                    configManager.getMessage("claim-info-members", "{members}", String.join(", ", memberNames)));
         }
     }
 
@@ -546,11 +569,173 @@ public class CommandHandler implements CommandExecutor {
                 "help-unclaimall",
                 "help-trust-menu",
                 "help-visitor-menu",
-                "help-member"
+                "help-member",
+                "help-list",
+                "help-sethome",
+                "help-delhome",
+                "help-home",
+                "help-homes"
         };
 
         for (String key : helpKeys) {
             player.sendMessage(configManager.getMessage(key));
+        }
+    }
+
+    // --- Claim List Command ---
+
+    private void handleListCommand(Player player) {
+        if (!player.hasPermission("landclaim.list")) {
+            sendMessage(player, "access-denied");
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        Set<ChunkPosition> claims = claimManager.getPlayerClaims(playerId);
+
+        if (claims.isEmpty()) {
+            sendMessage(player, "claim-list-empty");
+            return;
+        }
+
+        // Group claims by world
+        Map<String, List<ChunkPosition>> byWorld = new TreeMap<>();
+        for (ChunkPosition pos : claims) {
+            byWorld.computeIfAbsent(pos.getWorld(), k -> new ArrayList<>()).add(pos);
+        }
+
+        sendMessage(player, "claim-list-header");
+        for (Map.Entry<String, List<ChunkPosition>> entry : byWorld.entrySet()) {
+            player.sendMessage(configManager.getMessage("claim-list-world", "{world}", entry.getKey()));
+            for (ChunkPosition pos : entry.getValue()) {
+                player.sendMessage(configManager.getMessage("claim-list-entry",
+                        "{x}", String.valueOf(pos.getX()),
+                        "{z}", String.valueOf(pos.getZ())));
+            }
+        }
+        player.sendMessage(configManager.getMessage("claim-list-total", "{count}", String.valueOf(claims.size())));
+    }
+
+    // --- Home Commands ---
+
+    private void handleSetHomeCommand(Player player, String[] args) {
+        if (!player.hasPermission("landclaim.sethome")) {
+            sendMessage(player, "access-denied");
+            return;
+        }
+
+        if (args.length < 2) {
+            sendMessage(player, "home-usage");
+            return;
+        }
+
+        String name = args[1];
+
+        // Validate name: alphanumeric, max 16 chars
+        if (!name.matches("[a-zA-Z0-9_]{1,16}")) {
+            sendMessage(player, "home-name-invalid");
+            return;
+        }
+
+        // Must be in own claim
+        ChunkPosition pos = new ChunkPosition(player.getLocation());
+        if (!claimManager.isChunkClaimed(pos) || !claimManager.getChunkOwner(pos).equals(player.getUniqueId())) {
+            sendMessage(player, "home-must-be-in-own-claim");
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+
+        // Check if updating existing home (no limit check needed)
+        boolean isUpdate = homeManager.getHome(playerId, name) != null;
+
+        if (!isUpdate) {
+            int limit = homeManager.getHomeLimit(player);
+            int current = homeManager.getHomeCount(playerId);
+            if (current >= limit) {
+                sendMessage(player, "home-limit-reached", "{limit}", String.valueOf(limit));
+                return;
+            }
+        }
+
+        homeManager.setHome(playerId, name, player.getLocation());
+        if (plugin.getSaveManager() != null) {
+            plugin.getSaveManager().markHomesDirty();
+        }
+        sendMessage(player, "home-set", "{name}", name);
+    }
+
+    private void handleDelHomeCommand(Player player, String[] args) {
+        if (!player.hasPermission("landclaim.delhome")) {
+            sendMessage(player, "access-denied");
+            return;
+        }
+
+        if (args.length < 2) {
+            sendMessage(player, "home-usage");
+            return;
+        }
+
+        String name = args[1];
+        UUID playerId = player.getUniqueId();
+
+        if (homeManager.deleteHome(playerId, name)) {
+            if (plugin.getSaveManager() != null) {
+                plugin.getSaveManager().markHomesDirty();
+            }
+            sendMessage(player, "home-deleted", "{name}", name);
+        } else {
+            sendMessage(player, "home-not-found", "{name}", name);
+        }
+    }
+
+    private void handleHomeCommand(Player player, String[] args) {
+        if (!player.hasPermission("landclaim.home")) {
+            sendMessage(player, "access-denied");
+            return;
+        }
+
+        if (args.length < 2) {
+            sendMessage(player, "home-usage");
+            return;
+        }
+
+        String name = args[1];
+        UUID playerId = player.getUniqueId();
+        Location home = homeManager.getHome(playerId, name);
+
+        if (home == null) {
+            sendMessage(player, "home-not-found", "{name}", name);
+            return;
+        }
+
+        player.teleport(home);
+        sendMessage(player, "home-teleported", "{name}", name);
+    }
+
+    private void handleHomesCommand(Player player) {
+        if (!player.hasPermission("landclaim.homes")) {
+            sendMessage(player, "access-denied");
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        Map<String, Location> homes = homeManager.getHomes(playerId);
+
+        if (homes.isEmpty()) {
+            sendMessage(player, "home-list-empty");
+            return;
+        }
+
+        sendMessage(player, "home-list-header");
+        for (Map.Entry<String, Location> entry : homes.entrySet()) {
+            Location loc = entry.getValue();
+            player.sendMessage(configManager.getMessage("home-list-entry",
+                    "{name}", entry.getKey(),
+                    "{world}", loc.getWorld().getName(),
+                    "{x}", String.valueOf(loc.getBlockX()),
+                    "{y}", String.valueOf(loc.getBlockY()),
+                    "{z}", String.valueOf(loc.getBlockZ())));
         }
     }
 
@@ -603,7 +788,8 @@ public class CommandHandler implements CommandExecutor {
                 try {
                     UUID playerId = UUID.fromString(uuidStr);
                     autoClaimPlayers.put(playerId, autoClaimSection.getBoolean(uuidStr));
-                } catch (IllegalArgumentException ignored) {}
+                } catch (IllegalArgumentException ignored) {
+                }
             }
         }
 
@@ -612,7 +798,8 @@ public class CommandHandler implements CommandExecutor {
                 try {
                     UUID playerId = UUID.fromString(uuidStr);
                     autoUnclaimPlayers.put(playerId, autoUnclaimSection.getBoolean(uuidStr));
-                } catch (IllegalArgumentException ignored) {}
+                } catch (IllegalArgumentException ignored) {
+                }
             }
         }
     }

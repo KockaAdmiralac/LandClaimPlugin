@@ -98,3 +98,30 @@ too-close-to-worldguard: "&7You must be &#31A2DD{gap} &7chunks away from protect
 actionbar-wilderness: "&7Wilderness"
 no-claims-found: "&7No claims found."
 
+# Claim List
+claim-list-header: "&7--- &#31A2DDYour Claims &7---"
+claim-list-world: "&7World: &#31A2DD{world}"
+claim-list-entry: "&7  Chunk &#31A2DD({x}, {z})"
+claim-list-total: "&7Total: &#31A2DD{count} &7chunks"
+claim-list-empty: "&7You have no claims."
+
+# Homes
+home-set: "&7Home &#31A2DD{name} &7set."
+home-deleted: "&7Home &#31A2DD{name} &7deleted."
+home-teleported: "&7Teleported to home &#31A2DD{name}&7."
+home-not-found: "&7Home &#31A2DD{name} &7not found."
+home-limit-reached: "&7Home limit reached ({limit})."
+home-must-be-in-own-claim: "&7You must be in your own claim to set a home."
+home-list-header: "&7--- &#31A2DDYour Homes &7---"
+home-list-entry: "&7  &#31A2DD{name} &7in &#31A2DD{world} &7at &#31A2DD({x}, {y}, {z})"
+home-list-empty: "&7You have no homes."
+home-usage: "&7Usage: &#31A2DD/claim sethome <name>"
+home-name-invalid: "&7Home name must be alphanumeric (max 16 chars)."
+
+# Help (new)
+help-list: "&#31A2DD/claim list &7- List all your claims"
+help-sethome: "&#31A2DD/claim sethome <name> &7- Set a claim home"
+help-delhome: "&#31A2DD/claim delhome <name> &7- Delete a home"
+help-home: "&#31A2DD/claim home <name> &7- Teleport to a home"
+help-homes: "&#31A2DD/claim homes &7- List all your homes"
+

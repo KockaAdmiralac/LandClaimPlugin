@@ -13,21 +13,25 @@ public class SaveManager {
     private final LandClaimPlugin plugin;
     private final ClaimManager claimManager;
     private final TrustManager trustManager;
-    
+    private final HomeManager homeManager;
+
     // Debounce flags - mark data as dirty, save on next cycle
     private final AtomicBoolean claimsDirty = new AtomicBoolean(false);
     private final AtomicBoolean trustDirty = new AtomicBoolean(false);
     private final AtomicBoolean permissionsDirty = new AtomicBoolean(false);
-    
+    private final AtomicBoolean homesDirty = new AtomicBoolean(false);
+
     // Save interval in ticks (default: 60 seconds = 1200 ticks)
     private static final int SAVE_INTERVAL = 1200;
-    
-    public SaveManager(LandClaimPlugin plugin, ClaimManager claimManager, TrustManager trustManager) {
+
+    public SaveManager(LandClaimPlugin plugin, ClaimManager claimManager, TrustManager trustManager,
+            HomeManager homeManager) {
         this.plugin = plugin;
         this.claimManager = claimManager;
         this.trustManager = trustManager;
+        this.homeManager = homeManager;
     }
-    
+
     /**
      * Start the periodic save task
      */
@@ -39,28 +43,35 @@ public class SaveManager {
             }
         }.runTaskTimerAsynchronously(plugin, SAVE_INTERVAL, SAVE_INTERVAL);
     }
-    
+
     /**
      * Mark claims data as needing to be saved
      */
     public void markClaimsDirty() {
         claimsDirty.set(true);
     }
-    
+
     /**
      * Mark trust data as needing to be saved
      */
     public void markTrustDirty() {
         trustDirty.set(true);
     }
-    
+
     /**
      * Mark permissions data as needing to be saved
      */
     public void markPermissionsDirty() {
         permissionsDirty.set(true);
     }
-    
+
+    /**
+     * Mark homes data as needing to be saved
+     */
+    public void markHomesDirty() {
+        homesDirty.set(true);
+    }
+
     /**
      * Save all dirty data asynchronously
      */
@@ -77,7 +88,7 @@ public class SaveManager {
                 }
             }.runTask(plugin);
         }
-        
+
         if (trustDirty.compareAndSet(true, false)) {
             new BukkitRunnable() {
                 @Override
@@ -89,7 +100,7 @@ public class SaveManager {
                 }
             }.runTask(plugin);
         }
-        
+
         if (permissionsDirty.compareAndSet(true, false)) {
             new BukkitRunnable() {
                 @Override
@@ -101,8 +112,20 @@ public class SaveManager {
                 }
             }.runTask(plugin);
         }
+
+        if (homesDirty.compareAndSet(true, false)) {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    homeManager.save();
+                    if (plugin.getConfigManager().logAutoSaveMessage()) {
+                        plugin.getLogger().info("Homes auto-saved.");
+                    }
+                }
+            }.runTask(plugin);
+        }
     }
-    
+
     /**
      * Force save all data immediately (for plugin disable)
      */
@@ -110,8 +133,9 @@ public class SaveManager {
         claimManager.saveClaims();
         trustManager.saveTrustedPlayers();
         trustManager.savePermissionsAndMembers();
+        homeManager.save();
     }
-    
+
     /**
      * Save all data asynchronously
      */

@@ -3,7 +3,7 @@ version: '1.8'
 main: org.ayosynk.landClaimPlugin.LandClaimPlugin
 api-version: '1.21'
 author: AyoSynk
-soft-depend: [WorldGuard]
+soft-depend: [WorldGuard, BlueMap, dynmap]
 commands:
   claim:
     description: Main land claim command
@@ -28,6 +28,11 @@ permissions:
     children:
       landclaim.claim: true
       landclaim.admin: true
+      landclaim.list: true
+      landclaim.sethome: true
+      landclaim.delhome: true
+      landclaim.home: true
+      landclaim.homes: true
   landclaim.claim:
     description: Basic claiming permission
     default: true
@@ -40,3 +45,21 @@ permissions:
   landclaim.auto:
     description: Use auto-claim feature
     default: true
+  landclaim.list:
+    description: List all your claims
+    default: true
+  landclaim.sethome:
+    description: Set a claim home
+    default: true
+  landclaim.delhome:
+    description: Delete a claim home
+    default: true
+  landclaim.home:
+    description: Teleport to a claim home
+    default: true
+  landclaim.homes:
+    description: List all claim homes
+    default: true
+  landclaim.homes.limit.*:
+    description: Max homes a player can set
+    default: false

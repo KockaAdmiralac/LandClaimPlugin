@@ -3,11 +3,14 @@ package org.ayosynk.landClaimPlugin;
 import org.ayosynk.landClaimPlugin.commands.CommandHandler;
 import org.ayosynk.landClaimPlugin.commands.ClaimTabCompleter;
 import org.ayosynk.landClaimPlugin.gui.GUIListener;
+import org.ayosynk.landClaimPlugin.hooks.BlueMapHook;
+import org.ayosynk.landClaimPlugin.hooks.DynmapHook;
 import org.ayosynk.landClaimPlugin.listeners.CommandBlocker;
 import org.ayosynk.landClaimPlugin.listeners.EventListener;
 import org.ayosynk.landClaimPlugin.listeners.PlayerJoinListener;
 import org.ayosynk.landClaimPlugin.managers.ClaimManager;
 import org.ayosynk.landClaimPlugin.managers.ConfigManager;
+import org.ayosynk.landClaimPlugin.managers.HomeManager;
 import org.ayosynk.landClaimPlugin.managers.TrustManager;
 import org.ayosynk.landClaimPlugin.managers.VisualizationManager;
 import org.ayosynk.landClaimPlugin.managers.SaveManager;
@@ -26,8 +29,11 @@ public class LandClaimPlugin extends JavaPlugin {
     private TrustManager trustManager;
     private VisualizationManager visualizationManager;
     private SaveManager saveManager;
+    private HomeManager homeManager;
     private CommandHandler commandHandler;
     private EventListener eventListener;
+    private BlueMapHook blueMapHook;
+    private DynmapHook dynmapHook;
     private List<String> blockedCommands = new ArrayList<>();
     private List<String> blockedWorlds = new ArrayList<>();
     private boolean worldGuardEnabled = false;
@@ -35,9 +41,10 @@ public class LandClaimPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         try {
-            // Initialize bStats metrics (https://bstats.org/plugin/bukkit/LandClaimPlugin/28407)
+            // Initialize bStats metrics
+            // (https://bstats.org/plugin/bukkit/LandClaimPlugin/28407)
             new Metrics(this, 28407);
-            
+
             // Check for WorldGuard
             if (Bukkit.getPluginManager().isPluginEnabled("WorldGuard")) {
                 worldGuardEnabled = true;
@@ -54,12 +61,16 @@ public class LandClaimPlugin extends JavaPlugin {
 
             // Initialize visualization manager
             visualizationManager = new VisualizationManager(this, claimManager, configManager);
-            
+
+            // Initialize home manager
+            homeManager = new HomeManager(this, configManager);
+
             // Initialize save manager with debounced async saves
-            saveManager = new SaveManager(this, claimManager, trustManager);
+            saveManager = new SaveManager(this, claimManager, trustManager, homeManager);
 
             // Register commands
-            commandHandler = new CommandHandler(this, claimManager, trustManager, configManager, visualizationManager);
+            commandHandler = new CommandHandler(this, claimManager, trustManager, configManager, visualizationManager,
+                    homeManager);
 
             // Register events
             eventListener = new EventListener(this, claimManager, trustManager, configManager);
@@ -68,19 +79,16 @@ public class LandClaimPlugin extends JavaPlugin {
             // Register command blocker
             getServer().getPluginManager().registerEvents(
                     new CommandBlocker(this, claimManager, trustManager),
-                    this
-            );
+                    this);
 
             getServer().getPluginManager().registerEvents(
                     new PlayerJoinListener(this, visualizationManager),
-                    this
-            );
+                    this);
 
             // Register GUI listener
             getServer().getPluginManager().registerEvents(
                     new GUIListener(trustManager),
-                    this
-            );
+                    this);
 
             // Register tab completers
             ClaimTabCompleter tabCompleter = new ClaimTabCompleter();
@@ -106,6 +114,18 @@ public class LandClaimPlugin extends JavaPlugin {
 
             // Start debounced auto-save task
             saveManager.startAutoSave();
+
+            // Initialize map integrations (after config is loaded)
+            if (configManager.getConfig().getBoolean("bluemap.enabled", true)
+                    && Bukkit.getPluginManager().isPluginEnabled("BlueMap")) {
+                blueMapHook = new BlueMapHook(this, claimManager);
+                getLogger().info("BlueMap detected. Enabling map integration.");
+            }
+            if (configManager.getConfig().getBoolean("dynmap.enabled", true)
+                    && Bukkit.getPluginManager().isPluginEnabled("dynmap")) {
+                dynmapHook = new DynmapHook(this, claimManager);
+                getLogger().info("Dynmap detected. Enabling map integration.");
+            }
 
             getLogger().info("LandClaim has been enabled! Loaded " +
                     claimManager.getTotalClaims() + " claims and " +
@@ -149,8 +169,12 @@ public class LandClaimPlugin extends JavaPlugin {
             // Save all data synchronously on disable
             if (saveManager != null) {
                 saveManager.saveAll();
-                getLogger().info("Saved " + claimManager.getTotalClaims() + " claims and " + 
+                getLogger().info("Saved " + claimManager.getTotalClaims() + " claims and " +
                         trustManager.getTotalTrusts() + " trust relationships");
+            }
+            if (homeManager != null) {
+                homeManager.save();
+                getLogger().info("Saved home data");
             }
             if (commandHandler != null) {
                 commandHandler.saveAllPlayerData();
@@ -186,6 +210,10 @@ public class LandClaimPlugin extends JavaPlugin {
         return saveManager;
     }
 
+    public HomeManager getHomeManager() {
+        return homeManager;
+    }
+
     public CommandHandler getCommandHandler() {
         return commandHandler;
     }
@@ -200,5 +228,25 @@ public class LandClaimPlugin extends JavaPlugin {
 
     public EventListener getEventListener() {
         return eventListener;
+    }
+
+    public BlueMapHook getBlueMapHook() {
+        return blueMapHook;
+    }
+
+    public DynmapHook getDynmapHook() {
+        return dynmapHook;
+    }
+
+    /**
+     * Refresh all map integrations (called on claim/unclaim)
+     */
+    public void refreshMapHooks() {
+        if (blueMapHook != null && blueMapHook.isActive()) {
+            blueMapHook.update();
+        }
+        if (dynmapHook != null && dynmapHook.isActive()) {
+            dynmapHook.update();
+        }
     }
 }
