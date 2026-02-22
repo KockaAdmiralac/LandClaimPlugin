@@ -2,7 +2,20 @@
 
 ## Version 1.8
 
+### ✨ New Features
+- **Map Integration**: Added support for BlueMap (3D ExtrudeMarkers) and Dynmap (Area markers) to display claims on web maps automatically.
+- **Multiple Homes**: Added `/claim sethome <name>`, `/claim home <name>`, `/claim homes`, and `/claim delhome` for players to set multiple homes strictly within their own claims.
+- **Claim List**: Added `/claim list` command showing coordinates of all your owned chunks, grouped by world.
+- **LuckPerms Support**: Fully integrated LuckPerms nodes (`landclaim.list`, `landclaim.sethome`, etc.) including dynamic home limits per rank (`landclaim.homes.limit.<n>`).
+
+### 🛡️ Protections & Anti-Griefing
+- **Respawn Anchors**: Blocked exploding respawn anchors inside or near claimed lands.
+- **Piston Griefing**: Prevented players from pushing or pulling blocks across claim borders they do not own using pistons or slime blocks.
+- **Minecart Griefing**: Prevented Hopper Minecarts from being pushed from the wilderness into a claimed chunk.
+- **Hex Colors**: Full support for Bungee hex color formats (`&#RRGGBB`) in config, action bars, and chat messages.
+
 ### 🐛 Bug Fixes
+- **Double Prefix Format**: Removed duplicate `[LandClaim]` prefixes from the `/claim help` menu.
 - **Fixed actionbar messages not updating**: Actionbar messages were reading from wrong config file; now properly reads from messages.yml
 - **Added missing actionbar-owner key**: Added missing message key for viewing other players' claims
 - **Wilderness actionbar persistence**: Wilderness message now stays visible instead of flickering when moving between unclaimed chunks
