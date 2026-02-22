@@ -2,8 +2,8 @@ package org.ayosynk.landClaimPlugin.hooks;
 
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.api.BlueMapMap;
+import de.bluecolored.bluemap.api.markers.ExtrudeMarker;
 import de.bluecolored.bluemap.api.markers.MarkerSet;
-import de.bluecolored.bluemap.api.markers.ShapeMarker;
 import de.bluecolored.bluemap.api.math.Color;
 import de.bluecolored.bluemap.api.math.Shape;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
@@ -58,13 +58,10 @@ public class BlueMapHook {
             }
 
             // Get config colors
-            String fillColorHex = plugin.getConfig().getString("bluemap.fill-color", "3366FF");
             double fillOpacity = plugin.getConfig().getDouble("bluemap.fill-opacity", 0.3);
-            String borderColorHex = plugin.getConfig().getString("bluemap.border-color", "3366FF");
             double borderOpacity = plugin.getConfig().getDouble("bluemap.border-opacity", 0.8);
 
-            Color fillColor = parseColor(fillColorHex, fillOpacity);
-            Color borderColor = parseColor(borderColorHex, borderOpacity);
+            // Colors are dynamically generated per-player inside the loop
 
             for (BlueMapMap map : api.getMaps()) {
                 String worldId = map.getWorld().getId();
@@ -92,6 +89,14 @@ public class BlueMapHook {
                         if (playerName == null)
                             playerName = "Unknown";
 
+                        // Generate a unique color based on the player's UUID
+                        Random rnd = new Random(playerId.getMostSignificantBits());
+                        int r = rnd.nextInt(200) + 55; // Keep colors somewhat bright
+                        int g = rnd.nextInt(200) + 55;
+                        int b = rnd.nextInt(200) + 55;
+                        Color pFill = new Color(r, g, b, (int) (fillOpacity * 255));
+                        Color pBorder = new Color(r, g, b, (int) (borderOpacity * 255));
+
                         Set<ChunkPosition> chunks = entry.getValue();
 
                         // Create one marker per chunk for simplicity
@@ -104,11 +109,11 @@ public class BlueMapHook {
 
                             Shape shape = Shape.createRect(minX, minZ, maxX, maxZ);
 
-                            ShapeMarker marker = ShapeMarker.builder()
+                            ExtrudeMarker marker = ExtrudeMarker.builder()
                                     .label(playerName + "'s Claim")
-                                    .shape(shape, 64)
-                                    .fillColor(fillColor)
-                                    .lineColor(borderColor)
+                                    .shape(shape, -64, 319) // 3D box covering the whole world height
+                                    .fillColor(pFill)
+                                    .lineColor(pBorder)
                                     .lineWidth(2)
                                     .depthTestEnabled(false)
                                     .build();
@@ -123,18 +128,6 @@ public class BlueMapHook {
                 map.getMarkerSets().put("landclaims", markerSet);
             }
         });
-    }
-
-    private Color parseColor(String hex, double opacity) {
-        try {
-            int r = Integer.parseInt(hex.substring(0, 2), 16);
-            int g = Integer.parseInt(hex.substring(2, 4), 16);
-            int b = Integer.parseInt(hex.substring(4, 6), 16);
-            int a = (int) (opacity * 255);
-            return new Color(r, g, b, a);
-        } catch (Exception e) {
-            return new Color(51, 102, 255, (int) (opacity * 255));
-        }
     }
 
     private Set<UUID> getAllPlayerIds() {
