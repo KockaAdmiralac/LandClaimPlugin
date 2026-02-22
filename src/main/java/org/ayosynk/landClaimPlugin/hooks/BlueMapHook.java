@@ -6,7 +6,6 @@ import de.bluecolored.bluemap.api.markers.MarkerSet;
 import de.bluecolored.bluemap.api.markers.ShapeMarker;
 import de.bluecolored.bluemap.api.math.Color;
 import de.bluecolored.bluemap.api.math.Shape;
-import com.flowpowered.math.vector.Vector2d;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.managers.ClaimManager;
 import org.ayosynk.landClaimPlugin.models.ChunkPosition;
@@ -103,12 +102,7 @@ public class BlueMapHook {
                             int maxX = minX + 16;
                             int maxZ = minZ + 16;
 
-                            Shape shape = Shape.builder()
-                                    .addPoint(new Vector2d(minX, minZ))
-                                    .addPoint(new Vector2d(maxX, minZ))
-                                    .addPoint(new Vector2d(maxX, maxZ))
-                                    .addPoint(new Vector2d(minX, maxZ))
-                                    .build();
+                            Shape shape = Shape.createRect(minX, minZ, maxX, maxZ);
 
                             ShapeMarker marker = ShapeMarker.builder()
                                     .label(playerName + "'s Claim")
