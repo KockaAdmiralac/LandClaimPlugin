@@ -115,17 +115,20 @@ public class LandClaimPlugin extends JavaPlugin {
             // Start debounced auto-save task
             saveManager.startAutoSave();
 
-            // Initialize map integrations (after config is loaded)
-            if (configManager.getConfig().getBoolean("bluemap.enabled", true)
-                    && Bukkit.getPluginManager().isPluginEnabled("BlueMap")) {
-                blueMapHook = new BlueMapHook(this, claimManager);
-                getLogger().info("BlueMap detected. Enabling map integration.");
-            }
-            if (configManager.getConfig().getBoolean("dynmap.enabled", true)
-                    && Bukkit.getPluginManager().isPluginEnabled("dynmap")) {
-                dynmapHook = new DynmapHook(this, claimManager);
-                getLogger().info("Dynmap detected. Enabling map integration.");
-            }
+            // Initialize map integrations (after config is loaded and server finishes
+            // enabling)
+            Bukkit.getScheduler().runTask(this, () -> {
+                if (configManager.getConfig().getBoolean("bluemap.enabled", true)
+                        && Bukkit.getPluginManager().getPlugin("BlueMap") != null) {
+                    blueMapHook = new BlueMapHook(LandClaimPlugin.this, claimManager);
+                    getLogger().info("BlueMap detected. Enabling map integration.");
+                }
+                if (configManager.getConfig().getBoolean("dynmap.enabled", true)
+                        && Bukkit.getPluginManager().getPlugin("dynmap") != null) {
+                    dynmapHook = new DynmapHook(LandClaimPlugin.this, claimManager);
+                    getLogger().info("Dynmap detected. Enabling map integration.");
+                }
+            });
 
             getLogger().info("LandClaim has been enabled! Loaded " +
                     claimManager.getTotalClaims() + " claims and " +
