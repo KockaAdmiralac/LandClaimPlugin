@@ -58,7 +58,7 @@ public class BlueMapHook {
             }
 
             // Get config colors
-            double fillOpacity = plugin.getConfig().getDouble("bluemap.fill-opacity", 0.3);
+            double fillOpacity = plugin.getConfig().getDouble("bluemap.fill-opacity", 0.05);
             double borderOpacity = plugin.getConfig().getDouble("bluemap.border-opacity", 0.8);
 
             // Colors are dynamically generated per-player inside the loop
