@@ -3,7 +3,7 @@
 ## Version 1.8
 
 ### ✨ New Features
-- **Map Integration**: Added support for BlueMap (3D ExtrudeMarkers) and Dynmap (Area markers) to display claims on web maps automatically.
+- **Map Integration**: Added support for BlueMap (Flat ShapeMarkers) and Dynmap (Area markers) to display claims on web maps automatically. Contiguous claims are now aggressively merged into a single, clean border polygon instead of showing internal chunks!
 - **Multiple Homes**: Added `/claim sethome <name>`, `/claim home <name>`, `/claim homes`, and `/claim delhome` for players to set multiple homes strictly within their own claims.
 - **Claim List**: Added `/claim list` command showing coordinates of all your owned chunks, grouped by world.
 - **LuckPerms Support**: Fully integrated LuckPerms nodes (`landclaim.list`, `landclaim.sethome`, etc.) including dynamic home limits per rank (`landclaim.homes.limit.<n>`).

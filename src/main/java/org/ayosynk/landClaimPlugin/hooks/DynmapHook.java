@@ -89,34 +89,123 @@ public class DynmapHook {
                 playerName = "Unknown";
 
             Set<ChunkPosition> claims = claimManager.getPlayerClaims(playerId);
-            int i = 0;
+
+            // Group claims by world before merging
+            Map<String, Set<ChunkPosition>> claimsByWorld = new HashMap<>();
             for (ChunkPosition pos : claims) {
-                int minX = pos.getX() * 16;
-                int minZ = pos.getZ() * 16;
-                int maxX = minX + 16;
-                int maxZ = minZ + 16;
+                claimsByWorld.computeIfAbsent(pos.getWorld(), k -> new HashSet<>()).add(pos);
+            }
 
-                String markerId = "lc_" + playerId.toString() + "_" + i;
-                String label = playerName + "'s Claim";
+            int i = 0;
+            for (Map.Entry<String, Set<ChunkPosition>> worldEntry : claimsByWorld.entrySet()) {
+                String worldName = worldEntry.getKey();
+                List<double[][]> polygons = createPolygons(worldEntry.getValue());
 
-                double[] xCorners = { minX, maxX, maxX, minX };
-                double[] zCorners = { minZ, minZ, maxZ, maxZ };
+                for (double[][] polygon : polygons) {
+                    if (polygon[0].length < 3)
+                        continue;
 
-                AreaMarker marker = markerSet.createAreaMarker(
-                        markerId, label, false,
-                        pos.getWorld(),
-                        xCorners, zCorners, false);
+                    String markerId = "lc_" + playerId.toString() + "_" + i;
+                    String label = playerName + "'s Claim";
 
-                if (marker != null) {
-                    marker.setFillStyle(fillOpacity, fillColor);
-                    marker.setLineStyle(2, borderOpacity, borderColor);
-                    marker.setDescription("<b>" + playerName + "'s Claim</b><br>"
-                            + "Chunk: " + pos.getX() + ", " + pos.getZ());
+                    double[] xCorners = polygon[0];
+                    double[] zCorners = polygon[1];
+
+                    AreaMarker marker = markerSet.createAreaMarker(
+                            markerId, label, false,
+                            worldName,
+                            xCorners, zCorners, false);
+
+                    if (marker != null) {
+                        marker.setFillStyle(fillOpacity, fillColor);
+                        marker.setLineStyle(2, borderOpacity, borderColor);
+                        marker.setDescription("<b>" + playerName + "'s Claim</b>");
+                    }
+
+                    i++;
                 }
-
-                i++;
             }
         }
+    }
+
+    private record Point(int x, int z) {
+    }
+
+    private record Edge(Point from, Point to) {
+    }
+
+    private List<double[][]> createPolygons(Set<ChunkPosition> chunks) {
+        Set<Edge> edges = new HashSet<>();
+        for (ChunkPosition chunk : chunks) {
+            int cx = chunk.getX();
+            int cz = chunk.getZ();
+
+            Point p00 = new Point(cx, cz);
+            Point p10 = new Point(cx + 1, cz);
+            Point p11 = new Point(cx + 1, cz + 1);
+            Point p01 = new Point(cx, cz + 1);
+
+            Edge[] chunkEdges = {
+                    new Edge(p00, p10), // Top
+                    new Edge(p10, p11), // Right
+                    new Edge(p11, p01), // Bottom
+                    new Edge(p01, p00) // Left
+            };
+
+            for (Edge e : chunkEdges) {
+                Edge opposite = new Edge(e.to(), e.from());
+                if (edges.contains(opposite)) {
+                    edges.remove(opposite);
+                } else {
+                    edges.add(e);
+                }
+            }
+        }
+
+        Map<Point, List<Edge>> adjacency = new HashMap<>();
+        for (Edge e : edges) {
+            adjacency.computeIfAbsent(e.from(), k -> new ArrayList<>()).add(e);
+        }
+
+        List<double[][]> polygons = new ArrayList<>();
+
+        while (!adjacency.isEmpty()) {
+            Point start = adjacency.keySet().iterator().next();
+            List<Double> xPts = new ArrayList<>();
+            List<Double> zPts = new ArrayList<>();
+            Point current = start;
+
+            while (true) {
+                xPts.add(current.x() * 16.0);
+                zPts.add(current.z() * 16.0);
+
+                List<Edge> outEdges = adjacency.get(current);
+                if (outEdges == null || outEdges.isEmpty()) {
+                    adjacency.remove(current);
+                    break;
+                }
+
+                Edge nextEdge = outEdges.remove(0);
+                if (outEdges.isEmpty()) {
+                    adjacency.remove(current);
+                }
+
+                current = nextEdge.to();
+                if (current.equals(start)) {
+                    break;
+                }
+            }
+            if (xPts.size() >= 3) {
+                double[] xArr = new double[xPts.size()];
+                double[] zArr = new double[zPts.size()];
+                for (int j = 0; j < xPts.size(); j++) {
+                    xArr[j] = xPts.get(j);
+                    zArr[j] = zPts.get(j);
+                }
+                polygons.add(new double[][] { xArr, zArr });
+            }
+        }
+        return polygons;
     }
 
     private int parseHexColor(String hex) {

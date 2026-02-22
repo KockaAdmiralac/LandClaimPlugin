@@ -1,9 +1,10 @@
 package org.ayosynk.landClaimPlugin.hooks;
 
+import com.flowpowered.math.vector.Vector2d;
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.api.BlueMapMap;
-import de.bluecolored.bluemap.api.markers.ExtrudeMarker;
 import de.bluecolored.bluemap.api.markers.MarkerSet;
+import de.bluecolored.bluemap.api.markers.ShapeMarker;
 import de.bluecolored.bluemap.api.math.Color;
 import de.bluecolored.bluemap.api.math.Shape;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
@@ -97,21 +98,23 @@ public class BlueMapHook {
                         Color pFill = new Color(r, g, b, (float) fillOpacity);
                         Color pBorder = new Color(r, g, b, (float) borderOpacity);
 
+                        // Create a merged marker for each contiguous polygon
                         Set<ChunkPosition> chunks = entry.getValue();
-
-                        // Create one marker per chunk for simplicity
+                        List<List<Vector2d>> polygons = createPolygons(chunks);
                         int i = 0;
-                        for (ChunkPosition pos : chunks) {
-                            int minX = pos.getX() * 16;
-                            int minZ = pos.getZ() * 16;
-                            int maxX = minX + 16;
-                            int maxZ = minZ + 16;
+                        for (List<Vector2d> polygon : polygons) {
+                            if (polygon.size() < 3)
+                                continue;
 
-                            Shape shape = Shape.createRect(minX, minZ, maxX, maxZ);
+                            Shape.Builder shapeBuilder = Shape.builder();
+                            for (Vector2d pt : polygon) {
+                                shapeBuilder.addPoint(pt);
+                            }
+                            Shape shape = shapeBuilder.build();
 
-                            ExtrudeMarker marker = ExtrudeMarker.builder()
+                            ShapeMarker marker = ShapeMarker.builder()
                                     .label(playerName + "'s Claim")
-                                    .shape(shape, -64, 319) // 3D box covering the whole world height
+                                    .shape(shape, 64) // Flat marker at Y=64
                                     .fillColor(pFill)
                                     .lineColor(pBorder)
                                     .lineWidth(2)
@@ -128,6 +131,78 @@ public class BlueMapHook {
                 map.getMarkerSets().put("landclaims", markerSet);
             }
         });
+    }
+
+    private record Point(int x, int z) {
+    }
+
+    private record Edge(Point from, Point to) {
+    }
+
+    private List<List<Vector2d>> createPolygons(Set<ChunkPosition> chunks) {
+        Set<Edge> edges = new HashSet<>();
+        for (ChunkPosition chunk : chunks) {
+            int cx = chunk.getX();
+            int cz = chunk.getZ();
+
+            Point p00 = new Point(cx, cz);
+            Point p10 = new Point(cx + 1, cz);
+            Point p11 = new Point(cx + 1, cz + 1);
+            Point p01 = new Point(cx, cz + 1);
+
+            Edge[] chunkEdges = {
+                    new Edge(p00, p10), // Top
+                    new Edge(p10, p11), // Right
+                    new Edge(p11, p01), // Bottom
+                    new Edge(p01, p00) // Left
+            };
+
+            for (Edge e : chunkEdges) {
+                Edge opposite = new Edge(e.to(), e.from());
+                if (edges.contains(opposite)) {
+                    edges.remove(opposite);
+                } else {
+                    edges.add(e);
+                }
+            }
+        }
+
+        Map<Point, List<Edge>> adjacency = new HashMap<>();
+        for (Edge e : edges) {
+            adjacency.computeIfAbsent(e.from(), k -> new ArrayList<>()).add(e);
+        }
+
+        List<List<Vector2d>> polygons = new ArrayList<>();
+
+        while (!adjacency.isEmpty()) {
+            Point start = adjacency.keySet().iterator().next();
+            List<Vector2d> polygon = new ArrayList<>();
+            Point current = start;
+
+            while (true) {
+                polygon.add(new Vector2d(current.x() * 16.0, current.z() * 16.0));
+
+                List<Edge> outEdges = adjacency.get(current);
+                if (outEdges == null || outEdges.isEmpty()) {
+                    adjacency.remove(current);
+                    break;
+                }
+
+                Edge nextEdge = outEdges.remove(0);
+                if (outEdges.isEmpty()) {
+                    adjacency.remove(current);
+                }
+
+                current = nextEdge.to();
+                if (current.equals(start)) {
+                    break;
+                }
+            }
+            if (!polygon.isEmpty()) {
+                polygons.add(polygon);
+            }
+        }
+        return polygons;
     }
 
     private Set<UUID> getAllPlayerIds() {

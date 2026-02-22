@@ -101,6 +101,12 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
+            <groupId>com.flowpowered</groupId>
+            <artifactId>flow-math</artifactId>
+            <version>1.0.3</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>de.bluecolored.bluemap</groupId>
             <artifactId>BlueMapAPI</artifactId>
             <version>2.7.2</version>
