@@ -1,6 +1,5 @@
 package org.ayosynk.landClaimPlugin.hooks;
 
-import com.flowpowered.math.vector.Vector2d;
 import de.bluecolored.bluemap.api.BlueMapAPI;
 import de.bluecolored.bluemap.api.BlueMapMap;
 import de.bluecolored.bluemap.api.markers.MarkerSet;
@@ -100,16 +99,31 @@ public class BlueMapHook {
 
                         // Create a merged marker for each contiguous polygon
                         Set<ChunkPosition> chunks = entry.getValue();
-                        List<List<Vector2d>> polygons = createPolygons(chunks);
+                        List<double[][]> polygons = createPolygons(chunks);
                         int i = 0;
-                        for (List<Vector2d> polygon : polygons) {
-                            if (polygon.size() < 3)
+                        for (double[][] polygon : polygons) {
+                            if (polygon[0].length < 3)
                                 continue;
 
                             Shape.Builder shapeBuilder = Shape.builder();
-                            for (Vector2d pt : polygon) {
-                                shapeBuilder.addPoint(pt);
+
+                            try {
+                                Class<?> vectorClass = Class.forName("com.flowpowered.math.vector.Vector2d", true,
+                                        BlueMapAPI.class.getClassLoader());
+                                java.lang.reflect.Constructor<?> vectorConstructor = vectorClass
+                                        .getConstructor(double.class, double.class);
+                                java.lang.reflect.Method addPointMethod = shapeBuilder.getClass().getMethod("addPoint",
+                                        vectorClass);
+
+                                for (int j = 0; j < polygon[0].length; j++) {
+                                    Object vec = vectorConstructor.newInstance(polygon[0][j], polygon[1][j]);
+                                    addPointMethod.invoke(shapeBuilder, vec);
+                                }
+                            } catch (Exception ex) {
+                                plugin.getLogger().warning("Failed to create BlueMap shape: " + ex.getMessage());
+                                continue;
                             }
+
                             Shape shape = shapeBuilder.build();
 
                             ShapeMarker marker = ShapeMarker.builder()
@@ -139,7 +153,7 @@ public class BlueMapHook {
     private record Edge(Point from, Point to) {
     }
 
-    private List<List<Vector2d>> createPolygons(Set<ChunkPosition> chunks) {
+    private List<double[][]> createPolygons(Set<ChunkPosition> chunks) {
         Set<Edge> edges = new HashSet<>();
         for (ChunkPosition chunk : chunks) {
             int cx = chunk.getX();
@@ -172,15 +186,17 @@ public class BlueMapHook {
             adjacency.computeIfAbsent(e.from(), k -> new ArrayList<>()).add(e);
         }
 
-        List<List<Vector2d>> polygons = new ArrayList<>();
+        List<double[][]> polygons = new ArrayList<>();
 
         while (!adjacency.isEmpty()) {
             Point start = adjacency.keySet().iterator().next();
-            List<Vector2d> polygon = new ArrayList<>();
+            List<Double> xPts = new ArrayList<>();
+            List<Double> zPts = new ArrayList<>();
             Point current = start;
 
             while (true) {
-                polygon.add(new Vector2d(current.x() * 16.0, current.z() * 16.0));
+                xPts.add(current.x() * 16.0);
+                zPts.add(current.z() * 16.0);
 
                 List<Edge> outEdges = adjacency.get(current);
                 if (outEdges == null || outEdges.isEmpty()) {
@@ -198,8 +214,14 @@ public class BlueMapHook {
                     break;
                 }
             }
-            if (!polygon.isEmpty()) {
-                polygons.add(polygon);
+            if (xPts.size() >= 3) {
+                double[] xArr = new double[xPts.size()];
+                double[] zArr = new double[zPts.size()];
+                for (int j = 0; j < xPts.size(); j++) {
+                    xArr[j] = xPts.get(j);
+                    zArr[j] = zPts.get(j);
+                }
+                polygons.add(new double[][] { xArr, zArr });
             }
         }
         return polygons;
