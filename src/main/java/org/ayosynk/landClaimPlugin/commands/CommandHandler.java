@@ -631,8 +631,8 @@ public class CommandHandler implements CommandExecutor {
 
         String name = args[1];
 
-        // Validate name: alphanumeric, max 16 chars
-        if (!name.matches("[a-zA-Z0-9_]{1,16}")) {
+        // Validate name: Unicode letters, numbers, underscores, max 16 chars
+        if (!name.matches("^[\\p{L}0-9_]{1,16}$")) {
             sendMessage(player, "home-name-invalid");
             return;
         }
