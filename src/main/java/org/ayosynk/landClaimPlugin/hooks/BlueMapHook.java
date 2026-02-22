@@ -94,8 +94,8 @@ public class BlueMapHook {
                         int r = rnd.nextInt(200) + 55; // Keep colors somewhat bright
                         int g = rnd.nextInt(200) + 55;
                         int b = rnd.nextInt(200) + 55;
-                        Color pFill = new Color(r, g, b, (int) (fillOpacity * 255));
-                        Color pBorder = new Color(r, g, b, (int) (borderOpacity * 255));
+                        Color pFill = new Color(r, g, b, (float) fillOpacity);
+                        Color pBorder = new Color(r, g, b, (float) borderOpacity);
 
                         Set<ChunkPosition> chunks = entry.getValue();
 
