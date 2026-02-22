@@ -224,9 +224,17 @@ public class ConfigManager {
         String prefix = getConfig().getString("prefix", "&8[&6LandClaim&8]&r ");
         String message = messagesConfig.getString(key, "&cMessage not found: " + key);
         for (int i = 0; i < replacements.length; i += 2) {
-            message = message.replace(replacements[i], replacements[i+1]);
+            message = message.replace(replacements[i], replacements[i + 1]);
         }
         return ChatUtils.colorize(prefix + message);
+    }
+
+    public String getRawMessage(String key, String... replacements) {
+        String message = messagesConfig.getString(key, "&cMessage not found: " + key);
+        for (int i = 0; i < replacements.length; i += 2) {
+            message = message.replace(replacements[i], replacements[i + 1]);
+        }
+        return ChatUtils.colorize(message);
     }
 
     /**

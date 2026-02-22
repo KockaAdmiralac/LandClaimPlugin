@@ -578,7 +578,7 @@ public class CommandHandler implements CommandExecutor {
         };
 
         for (String key : helpKeys) {
-            player.sendMessage(configManager.getMessage(key));
+            player.sendMessage(configManager.getRawMessage(key));
         }
     }
 
